@@ -1,0 +1,9 @@
+node_modules/
+*.log
+
+# Only the README screenshot ships; the rest are local debug captures.
+assets/*
+!assets/bots-panel.png
+
+# Internal design drafts.
+design/

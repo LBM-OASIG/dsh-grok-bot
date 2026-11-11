@@ -1,0 +1,58 @@
+{
+  "name": "dsh-grok-bot",
+  "version": "0.1.2",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LBM-OASIG/dsh-grok-bot.git"
+  },
+  "homepage": "https://github.com/LBM-OASIG/dsh-grok-bot",
+  "bugs": {
+    "url": "https://github.com/LBM-OASIG/dsh-grok-bot/issues"
+  },
+  "private": true,
+  "type": "module",
+  "description": "Workspace bots for DeepSeek Harness: resident Bot agents with their own sessions, modes, long-term memory, self-waking routines, cross-session messages and multi-bot rooms, stored inside the workspace.",
+  "icon": "./icon.svg",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "host",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-locale"
+      ]
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.4"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/cordis": {
+      "optional": true
+    }
+  },
+  "scripts": {
+    "test": "node --test test/domain.test.mjs test/store.test.mjs test/engine.test.mjs test/rooms.test.mjs test/guard.test.mjs test/scheduler.test.mjs test/sessions.test.mjs test/messaging.test.mjs"
+  },
+  "license": "MIT"
+}

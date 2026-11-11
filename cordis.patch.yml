@@ -1,0 +1,10 @@
+# dsh-grok-bot — bundle patch.
+#
+# Only the host plugin row lives here. The four Bot agent presets are
+# registered at runtime through `ctx.agentPresets.register()`, which keeps the
+# mode->tool composition working immediately after a plugin reload and lets the
+# shell tool follow the platform (pwsh on Windows, bash elsewhere) without a
+# `!!js` expression in YAML.
+- insert:
+    - id: dsh-grok-bot
+      name: dsh-grok-bot
