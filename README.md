@@ -17,7 +17,7 @@
 
 > Grok Bot 只是功能参照；本插件与 xAI 无关联，也不含任何品牌素材。
 
-![Bots 面板](assets/bots-panel.png)
+<img src="assets/bots-panel.png" alt="Bots 面板" width="900" />
 
 ## 为什么是 Bot，而不是又一个聊天窗口
 
