@@ -6,6 +6,7 @@
 
 - `bot_*` 工具、身份/记忆提示段、模式守卫改为按 Agent Session（全局唯一）解析 Bot，不再用 `hub.findById(botId)`；多个工作区都有 `bot` 这种同名 id 时，music-combine 的 Bot 不会再读到 did-you-pay 的空记忆。
 - 面板动作统一带 `workspacePath`，宿主 `requireBot` 与 `routine.run_now` 按工作区解析；记忆页、用量、例行任务不再操作错 Bot。
+- 身份/记忆提示段在热重载时改为「认领同名段并替换」，不再保留上一轮插件实例的旧 `resolve` 闭包；否则工具已修好，提示词仍会显示另一个工作区的身份与空记忆。
 - Agent 注册表改以 Session id 为键（`refresh` / `forget` 同步），同名 Bot 不再互相覆盖注册记录。
 - 症状记录：Bot 搜「已发主题」为空、以为长期记忆被清空，实际是读到了另一个工作区同名 Bot 的 23 字节空记忆；原 `MEMORY.md` 一直完好。
 

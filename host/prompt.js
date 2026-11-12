@@ -69,31 +69,48 @@ export function registerPromptForAgent(deps) {
   const { agent, botId, hub, log } = deps;
   const resolve = () => hub.findBySession(agent.id) ?? hub.findById(botId);
   const sections = [];
-  try {
-    sections.push(
-      agent.ctx.systemPrompt.section({
-        name: 'dsh-grok-bot:identity',
-        order: 25,
-        text: () => {
-          const found = resolve();
-          if (found === undefined) return '';
-          return renderIdentity(found.bot, found.store.config);
-        },
-      }),
-    );
-    sections.push(
-      agent.ctx.systemPrompt.section({
-        name: 'dsh-grok-bot:memory',
-        order: 640,
-        text: () => {
-          const found = resolve();
-          if (found === undefined) return '';
-          return renderMemoryPrompt(found.store, found.bot);
-        },
-      }),
-    );
-  } catch (error) {
-    log('warn', `dsh-grok-bot: prompt registration failed for ${agent.id}: ${error instanceof Error ? error.message : String(error)}`);
-  }
+
+  /** Install one section, replacing a same-named one retained by an older load. */
+  const install = (section) => {
+    try {
+      const layers = agent.ctx.systemPrompt.layers;
+      const chain = typeof layers?.chainLayers === 'function' ? layers.chainLayers(agent) : [];
+      for (let index = chain.length - 1; index >= 0; index -= 1) {
+        const layer = chain[index];
+        if (layer?.sections?.has?.(section.name) !== true) continue;
+        const table = layer.sections.data;
+        if (table !== undefined && typeof table.set === 'function') {
+          table.set(section.name, section);
+          return;
+        }
+      }
+    } catch {
+      /* fall back to a normal section registration */
+    }
+    try {
+      sections.push(agent.ctx.systemPrompt.section(section));
+    } catch (error) {
+      log('warn', `dsh-grok-bot: prompt section "${section.name}" was not registered for ${agent.id}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
+  install({
+    name: 'dsh-grok-bot:identity',
+    order: 25,
+    text: () => {
+      const found = resolve();
+      if (found === undefined) return '';
+      return renderIdentity(found.bot, found.store.config);
+    },
+  });
+  install({
+    name: 'dsh-grok-bot:memory',
+    order: 640,
+    text: () => {
+      const found = resolve();
+      if (found === undefined) return '';
+      return renderMemoryPrompt(found.store, found.bot);
+    },
+  });
   return sections;
 }
