@@ -67,7 +67,7 @@ export function renderMemoryPrompt(store, bot) {
  */
 export function registerPromptForAgent(deps) {
   const { agent, botId, hub, log } = deps;
-  const resolve = () => hub.findById(botId);
+  const resolve = () => hub.findBySession(agent.id) ?? hub.findById(botId);
   const sections = [];
   try {
     sections.push(

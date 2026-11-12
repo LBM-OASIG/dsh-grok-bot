@@ -123,11 +123,19 @@ export class RoutineScheduler {
    * Run one routine immediately (manual runs bypass quiet hours).
    * @param {string} botId bot id.
    * @param {string} routineId routine id.
+   * @param {string} [workspacePath] owning workspace, when ids are duplicated.
    * @returns {Promise<{ok: boolean, outcome: string, text: string}>} result.
    */
-  async runNow(botId, routineId) {
-    const found = this.hub.findById(botId);
-    if (found === undefined) return { ok: false, outcome: 'error', text: 'this Bot no longer exists' };
+  async runNow(botId, routineId, workspacePath) {
+    const store = typeof workspacePath === 'string' && workspacePath !== ''
+      ? this.hub.resolveStore({ workspacePath })
+      : undefined;
+    const found = store === undefined
+      ? this.hub.findById(botId)
+      : { store, bot: store.getBot(botId) };
+    if (found === undefined || found.bot === undefined) {
+      return { ok: false, outcome: 'error', text: 'this Bot no longer exists' };
+    }
     const routine = found.bot.routines.find((item) => item.id === routineId);
     if (routine === undefined) return { ok: false, outcome: 'error', text: `unknown routine "${routineId}"` };
     const outcome = await this.run(found.bot, found.store, routine, { manual: true });

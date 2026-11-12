@@ -88,7 +88,7 @@ export class BotAgentRegistry {
     if (this.byAgent.has(agent)) return;
     const live = this.hub.findBySession(agent.id);
     if (live === undefined) return;
-    this.byAgent.set(agent, live.bot.id);
+    this.byAgent.set(agent, agent.id);
     const promptDisposers = registerPromptForAgent({
       agent,
       botId: live.bot.id,
@@ -97,8 +97,10 @@ export class BotAgentRegistry {
     });
     const toolDisposers = this.registerTools(agent, live.bot.id);
     const guardDisposer = this.registerModeGuard(agent, live.bot.id);
-    this.byBot.set(live.bot.id, {
+    this.byBot.set(agent.id, {
       agent,
+      botId: live.bot.id,
+      workspacePath: live.store.path,
       promptDisposers,
       toolDisposers,
       toolErrors: toolDisposers.errors ?? [],
@@ -122,7 +124,7 @@ export class BotAgentRegistry {
   registerModeGuard(agent, botId) {
     try {
       return agent.ctx.tools.guard((execution) => {
-        const live = this.hub.findById(botId);
+        const live = this.hub.findBySession(agent.id);
         if (live === undefined) return undefined;
         const mode = live.bot.mode;
         if (mode === 'operator' || mode === 'chief') return undefined;
@@ -161,10 +163,10 @@ export class BotAgentRegistry {
 
   /**
    * Rebuild the tool catalog after a mode change.
-   * @param {string} botId bot id.
+   * @param {string} sessionId Bot Session id (unique across workspaces).
    */
-  refresh(botId) {
-    const record = this.byBot.get(botId);
+  refresh(sessionId) {
+    const record = this.byBot.get(sessionId);
     if (record === undefined) return;
     for (const dispose of record.toolDisposers ?? []) {
       try {
@@ -173,7 +175,7 @@ export class BotAgentRegistry {
         /* a disposed agent scope is already gone */
       }
     }
-    record.toolDisposers = this.registerTools(record.agent, botId);
+    record.toolDisposers = this.registerTools(record.agent, record.botId);
     record.toolErrors = record.toolDisposers.errors ?? [];
   }
 
@@ -197,12 +199,12 @@ export class BotAgentRegistry {
 
   /**
    * Lift the registrations of a deleted Bot from its live Agent.
-   * @param {string} botId bot id.
+   * @param {string} sessionId Bot Session id.
    */
-  forget(botId) {
-    const record = this.byBot.get(botId);
+  forget(sessionId) {
+    const record = this.byBot.get(sessionId);
     if (record === undefined) return;
     this.release(record);
-    this.byBot.delete(botId);
+    this.byBot.delete(sessionId);
   }
 }

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.3 — 2026-11-12
+
+修复同名 Bot 跨工作区串数据的问题。
+
+- `bot_*` 工具、身份/记忆提示段、模式守卫改为按 Agent Session（全局唯一）解析 Bot，不再用 `hub.findById(botId)`；多个工作区都有 `bot` 这种同名 id 时，music-combine 的 Bot 不会再读到 did-you-pay 的空记忆。
+- 面板动作统一带 `workspacePath`，宿主 `requireBot` 与 `routine.run_now` 按工作区解析；记忆页、用量、例行任务不再操作错 Bot。
+- Agent 注册表改以 Session id 为键（`refresh` / `forget` 同步），同名 Bot 不再互相覆盖注册记录。
+- 症状记录：Bot 搜「已发主题」为空、以为长期记忆被清空，实际是读到了另一个工作区同名 Bot 的 23 字节空记忆；原 `MEMORY.md` 一直完好。
+
 ## 0.1.2 — 2026-11-11
 
 修复工作区与创建 Bot 的几个数据/排序问题。

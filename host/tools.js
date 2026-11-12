@@ -43,7 +43,9 @@ export function registerBotTools(deps) {
   const errors = [];
 
   const found = () => {
-    const live = hub.findById(botId);
+    // Resolve through this Agent's Session, not the bot id: ids are unique
+    // only inside one workspace, and two workspaces can both hold "bot".
+    const live = hub.findBySession(agent.id) ?? hub.findById(botId);
     if (live === undefined) throw new Error(`this Bot (${botId}) no longer exists`);
     return live;
   };

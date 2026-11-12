@@ -747,7 +747,7 @@ window.__ModuleLoader__.load({
           return;
         }
         const payload = editing
-          ? { id: bot.id, patch: clean }
+          ? { id: bot.id, workspacePath: bot.workspacePath, patch: clean }
           : { workspacePath: target.path, ...clean };
         void postAction(editing ? 'bot.update' : 'bot.create', payload)
           .then(() => onDone(editing ? bot.id : undefined))
@@ -1035,7 +1035,7 @@ window.__ModuleLoader__.load({
 
       useEffect(() => {
         let alive = true;
-        void postAction('memory.read', { id: bot.id })
+        void postAction('memory.read', { id: bot.id, workspacePath: bot.workspacePath })
           .then((result) => {
             if (!alive) return;
             setMemory(result.memory);
@@ -1051,9 +1051,9 @@ window.__ModuleLoader__.load({
         if (memory === null) return;
         setMemoryBusy(true);
         setError('');
-        void postAction('memory.write', { id: bot.id, text: memory.text })
+        void postAction('memory.write', { id: bot.id, workspacePath: bot.workspacePath, text: memory.text })
           .then(() => postAction('shared.write', { workspacePath: workspace.path, text: shared }))
-          .then(() => postAction('memory.read', { id: bot.id }))
+          .then(() => postAction('memory.read', { id: bot.id, workspacePath: bot.workspacePath }))
           .then((result) => {
             setMemory(result.memory);
             setShared(result.memory.shared ?? '');
@@ -1077,6 +1077,7 @@ window.__ModuleLoader__.load({
                 : { kind: 'cron', expr: routineDraft.expr };
         void postAction('routine.create', {
           id: bot.id,
+          workspacePath: bot.workspacePath,
           when,
           instruction: routineDraft.instruction,
           report: routineDraft.report,
@@ -1115,7 +1116,7 @@ window.__ModuleLoader__.load({
               type: 'button',
               className: 'dgb-btn',
               onClick: () => {
-                void postAction('bot.export', { id: bot.id })
+                void postAction('bot.export', { id: bot.id, workspacePath: bot.workspacePath })
                   .then((result) => downloadJson(bot.id + '-template.json', result.template))
                   .catch((failure) => setError(String(failure?.message ?? failure)));
               },
@@ -1145,7 +1146,7 @@ window.__ModuleLoader__.load({
                 className: 'dgb-btn',
                 onClick: () => {
                   if (!window.confirm('确认重建这个 Bot 的会话？旧历史不会迁移。')) return;
-                  void postAction('bot.rebuild_session', { id: bot.id, confirm: true }).catch((failure) => setError(String(failure?.message ?? failure)));
+                  void postAction('bot.rebuild_session', { id: bot.id, workspacePath: bot.workspacePath, confirm: true }).catch((failure) => setError(String(failure?.message ?? failure)));
                 },
               }, '重建会话'),
             )
@@ -1205,17 +1206,17 @@ window.__ModuleLoader__.load({
               h('button', {
                 type: 'button',
                 className: 'dgb-btn',
-                onClick: () => void postAction('routine.update', { id: bot.id, routineId: routine.id, enabled: !routine.enabled }).catch((failure) => setError(String(failure?.message ?? failure))),
+                onClick: () => void postAction('routine.update', { id: bot.id, workspacePath: bot.workspacePath, routineId: routine.id, enabled: !routine.enabled }).catch((failure) => setError(String(failure?.message ?? failure))),
               }, routine.enabled ? t.disable : t.enable),
               h('button', {
                 type: 'button',
                 className: 'dgb-btn',
-                onClick: () => void postAction('routine.run_now', { id: bot.id, routineId: routine.id }).catch((failure) => setError(String(failure?.message ?? failure))),
+                onClick: () => void postAction('routine.run_now', { id: bot.id, workspacePath: bot.workspacePath, routineId: routine.id }).catch((failure) => setError(String(failure?.message ?? failure))),
               }, t.runNow),
               h('button', {
                 type: 'button',
                 className: 'dgb-icon-btn',
-                onClick: () => void postAction('routine.delete', { id: bot.id, routineId: routine.id }).catch((failure) => setError(String(failure?.message ?? failure))),
+                onClick: () => void postAction('routine.delete', { id: bot.id, workspacePath: bot.workspacePath, routineId: routine.id }).catch((failure) => setError(String(failure?.message ?? failure))),
                 title: '删除',
               }, '✕'),
             ),
@@ -1289,7 +1290,7 @@ window.__ModuleLoader__.load({
               disabled: sendTarget === '' || sendText.trim() === '',
               onClick: () => {
                 setSendResult('');
-                void postAction('bot.send', { id: bot.id, target: sendTarget, text: sendText })
+                void postAction('bot.send', { id: bot.id, workspacePath: bot.workspacePath, target: sendTarget, text: sendText })
                   .then((result) => {
                     setSendResult(String(result.text ?? '已送达'));
                     setSendText('');
@@ -1316,7 +1317,7 @@ window.__ModuleLoader__.load({
               className: 'dgb-btn dgb-btn-danger',
               onClick: () => {
                 if (!window.confirm(t.confirmDelete)) return;
-                void postAction('bot.delete', { id: bot.id, confirm: true }).then(() => onDeleted()).catch((failure) => setError(String(failure?.message ?? failure)));
+                void postAction('bot.delete', { id: bot.id, workspacePath: bot.workspacePath, confirm: true }).then(() => onDeleted()).catch((failure) => setError(String(failure?.message ?? failure)));
               },
             }, t.remove),
           ),
@@ -1751,7 +1752,7 @@ window.__ModuleLoader__.load({
                               title: bot.pinned ? t.unpin : t.pin,
                               onClick: (event) => {
                                 event.stopPropagation();
-                                void run('bot.pin', { id: bot.id, pinned: !bot.pinned });
+                                void run('bot.pin', { id: bot.id, workspacePath: bot.workspacePath, pinned: !bot.pinned });
                               },
                             }, bot.pinned ? '📌' : '📍'),
                             h('button', {
@@ -1760,7 +1761,7 @@ window.__ModuleLoader__.load({
                               title: t.duplicate,
                               onClick: (event) => {
                                 event.stopPropagation();
-                                void run('bot.duplicate', { id: bot.id });
+                                void run('bot.duplicate', { id: bot.id, workspacePath: bot.workspacePath });
                               },
                             }, '⧉'),
                             h('button', {
@@ -1769,7 +1770,7 @@ window.__ModuleLoader__.load({
                               title: bot.hidden ? t.show : t.hide,
                               onClick: (event) => {
                                 event.stopPropagation();
-                                void run('bot.hide', { id: bot.id, hidden: !bot.hidden });
+                                void run('bot.hide', { id: bot.id, workspacePath: bot.workspacePath, hidden: !bot.hidden });
                               },
                             }, bot.hidden ? '◌' : '⦿'),
                             h('button', {
@@ -1779,7 +1780,7 @@ window.__ModuleLoader__.load({
                               onClick: (event) => {
                                 event.stopPropagation();
                                 if (!window.confirm(t.confirmDelete)) return;
-                                void run('bot.delete', { id: bot.id, confirm: true });
+                                void run('bot.delete', { id: bot.id, workspacePath: bot.workspacePath, confirm: true });
                               },
                             }, '✕'),
                           ),

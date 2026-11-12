@@ -46,8 +46,17 @@ export function createActions(deps) {
    * @param {string} botId bot id.
    * @returns {{store: object, bot: object}} owner.
    */
-  function requireBot(botId) {
-    if (typeof botId !== 'string' || botId === '') throw new DomainError('invalid_input', 'bot id is required');
+  function requireBot(payload) {
+    const botId = typeof payload?.id === 'string' ? payload.id : '';
+    if (botId === '') throw new DomainError('invalid_input', 'bot id is required');
+    if (typeof payload?.workspacePath === 'string' && payload.workspacePath !== '') {
+      const store = hub.resolveStore(payload);
+      const bot = store.getBot?.(botId);
+      if (bot === undefined) {
+        throw new DomainError('unknown_bot', `unknown bot "${botId}" in ${store.path}`);
+      }
+      return { store, bot };
+    }
     const found = hub.findById(botId);
     if (found === undefined) throw new DomainError('unknown_bot', `unknown bot "${botId}"`);
     return found;
@@ -96,7 +105,7 @@ export function createActions(deps) {
    * @returns {Promise<void>} completion.
    */
   async function switchMode(live, mode) {
-    registry.refresh(live.bot.id);
+    registry.refresh(live.bot.sessionId);
   }
 
   /**
@@ -141,7 +150,7 @@ export function createActions(deps) {
     },
 
     async 'bot.update'(payload) {
-      const live = requireBot(payload?.id);
+      const live = requireBot(payload);
       const previousMode = live.bot.mode;
       const patch = payload?.patch ?? payload ?? {};
       const bot = live.store.updateBot(live.bot.id, patch);
@@ -149,16 +158,16 @@ export function createActions(deps) {
         await rebuildSession({ store: live.store, bot });
       }
       if (bot.mode !== previousMode) await switchMode({ store: live.store, bot }, bot.mode);
-      else if (patch.autonomy !== undefined) registry.refresh(bot.id);
+      else if (patch.autonomy !== undefined) registry.refresh(bot.sessionId);
       changed('bot', { botId: bot.id });
       return ok();
     },
 
     async 'bot.delete'(payload) {
       if (payload?.confirm !== true) throw new DomainError('confirm_required', 'deleting a Bot needs confirm:true');
-      const live = requireBot(payload?.id);
+      const live = requireBot(payload);
       const sessionId = live.bot.sessionId;
-      registry.forget(live.bot.id);
+      registry.forget(sessionId);
       if (typeof sessionId === 'string') {
         await binder.cancel(sessionId);
         await binder.archive(sessionId);
@@ -170,7 +179,7 @@ export function createActions(deps) {
     },
 
     async 'bot.duplicate'(payload) {
-      const live = requireBot(payload?.id);
+      const live = requireBot(payload);
       const name = typeof payload?.name === 'string' && payload.name.trim() !== '' ? payload.name.trim() : `${live.bot.name} · 副本`;
       return createBot({
         workspacePath: live.store.path,
@@ -185,14 +194,14 @@ export function createActions(deps) {
     },
 
     async 'bot.pin'(payload) {
-      const live = requireBot(payload?.id);
+      const live = requireBot(payload);
       live.store.updateBot(live.bot.id, { pinned: payload?.pinned === true });
       changed('bot', { botId: live.bot.id });
       return ok();
     },
 
     async 'bot.hide'(payload) {
-      const live = requireBot(payload?.id);
+      const live = requireBot(payload);
       live.store.updateBot(live.bot.id, { hidden: payload?.hidden === true });
       changed('bot', { botId: live.bot.id });
       return ok();
@@ -200,14 +209,14 @@ export function createActions(deps) {
 
     async 'bot.rebuild_session'(payload) {
       if (payload?.confirm !== true) throw new DomainError('confirm_required', 'rebuilding a Session needs confirm:true');
-      const live = requireBot(payload?.id);
+      const live = requireBot(payload);
       const sessionId = await rebuildSession(live);
       changed('bot', { botId: live.bot.id, sessionId });
       return ok();
     },
 
     async 'bot.open_session'(payload) {
-      const live = requireBot(payload?.id);
+      const live = requireBot(payload);
       const title = typeof payload?.title === 'string' ? payload.title.trim() : '';
       if (title.length > 80) throw new DomainError('invalid_input', 'title is too long (80 characters)');
       const sessionId = await binder.createSession(live.store, {});
@@ -217,9 +226,9 @@ export function createActions(deps) {
     },
 
     async 'bot.debug_tools'(payload) {
-      const live = requireBot(payload?.id);
+      const live = requireBot(payload);
       const agent = typeof live.bot.sessionId === 'string' ? ctx.agents.get(live.bot.sessionId) : undefined;
-      const record = registry.byBot.get(live.bot.id);
+      const record = registry.byBot.get(live.bot.sessionId);
       let names = [];
       try {
         names = agent?.ctx?.tools?.definitions?.(agent)?.map((item) => item.name) ?? [];
@@ -241,7 +250,7 @@ export function createActions(deps) {
     },
 
     async 'bot.open_chat'(payload) {
-      const live = requireBot(payload?.id);
+      const live = requireBot(payload);
       if (typeof live.bot.sessionId !== 'string') throw new DomainError('session_missing', 'this Bot has no Session yet');
       return { ok: true, sessionId: live.bot.sessionId, snapshot: snapshot() };
     },
@@ -251,7 +260,7 @@ export function createActions(deps) {
      * routines, but never the Session binding or the memory files.
      */
     async 'bot.export'(payload) {
-      const live = requireBot(payload?.id);
+      const live = requireBot(payload);
       const bot = live.bot;
       return {
         ok: true,
@@ -299,7 +308,7 @@ export function createActions(deps) {
 
     /** Send one message on behalf of a Bot (used by the panel's send-to form). */
     async 'bot.send'(payload) {
-      const live = requireBot(payload?.id);
+      const live = requireBot(payload);
       const target = String(payload?.target ?? '').trim();
       const text = String(payload?.text ?? '').trim();
       if (target === '' || text === '') throw new DomainError('invalid_input', 'target and text are required');
@@ -311,7 +320,7 @@ export function createActions(deps) {
     /* --------------------------------------------------------------- memory */
 
     async 'memory.read'(payload) {
-      const live = requireBot(payload?.id);
+      const live = requireBot(payload);
       return {
         ok: true,
         snapshot: snapshot(),
@@ -326,7 +335,7 @@ export function createActions(deps) {
     },
 
     async 'memory.write'(payload) {
-      const live = requireBot(payload?.id);
+      const live = requireBot(payload);
       if (typeof payload?.text !== 'string') throw new DomainError('invalid_input', 'memory text is required');
       live.store.writeMemory(live.bot.id, payload.text);
       changed('memory', { botId: live.bot.id });
@@ -334,7 +343,7 @@ export function createActions(deps) {
     },
 
     async 'memory.append'(payload) {
-      const live = requireBot(payload?.id);
+      const live = requireBot(payload);
       const entry = String(payload?.entry ?? '').trim();
       if (entry === '') throw new DomainError('invalid_input', 'memory entry is required');
       const dateKey = localDateKey();
@@ -348,7 +357,7 @@ export function createActions(deps) {
     },
 
     async 'memory.forget'(payload) {
-      const live = requireBot(payload?.id);
+      const live = requireBot(payload);
       const query = String(payload?.query ?? '').trim();
       if (query === '') throw new DomainError('invalid_input', 'query is required');
       const result = forgetMemoryLines(live.store.readMemory(live.bot.id), query);
@@ -373,7 +382,7 @@ export function createActions(deps) {
     /* ------------------------------------------------------------- routines */
 
     async 'routine.create'(payload) {
-      const live = requireBot(payload?.id);
+      const live = requireBot(payload);
       const routine = normalizeRoutine({
         when: payload?.when,
         instruction: payload?.instruction,
@@ -389,7 +398,7 @@ export function createActions(deps) {
     },
 
     async 'routine.update'(payload) {
-      const live = requireBot(payload?.id);
+      const live = requireBot(payload);
       const routineId = String(payload?.routineId ?? payload?.routine?.id ?? '');
       let found = false;
       const routines = live.bot.routines.map((routine) => {
@@ -417,7 +426,7 @@ export function createActions(deps) {
     },
 
     async 'routine.delete'(payload) {
-      const live = requireBot(payload?.id);
+      const live = requireBot(payload);
       const routineId = String(payload?.routineId ?? '');
       const routines = live.bot.routines.filter((routine) => routine.id !== routineId);
       if (routines.length === live.bot.routines.length) throw new DomainError('unknown_routine', `unknown routine "${routineId}"`);
@@ -428,11 +437,11 @@ export function createActions(deps) {
     },
 
     async 'routine.run_now'(payload) {
-      const live = requireBot(payload?.id);
+      const live = requireBot(payload);
       const routineId = String(payload?.routineId ?? '');
       const scheduler = schedulerRef.current;
       if (scheduler === undefined) throw new DomainError('not_ready', 'the routine scheduler is not ready');
-      const outcome = await scheduler.runNow(live.bot.id, routineId);
+      const outcome = await scheduler.runNow(live.bot.id, routineId, live.store.path);
       return { ok: true, snapshot: snapshot(), outcome };
     },
 
