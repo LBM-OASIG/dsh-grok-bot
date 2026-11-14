@@ -118,7 +118,13 @@ export function createMessaging(deps) {
  */
 async function listSessions(ctx) {
   try {
-    const page = await ctx.sessionController.list({}, new AbortController().signal);
+    const signal = new AbortController().signal;
+    // 0.2.2-rc.1 answered `{ items }`; rc.2+ returns the array directly.
+    let page = await ctx.sessionController.list(signal);
+    if (page === null || typeof page !== 'object') {
+      page = await ctx.sessionController.list({}, signal);
+    }
+    if (Array.isArray(page)) return page;
     return Array.isArray(page?.items) ? page.items : [];
   } catch (error) {
     return [];

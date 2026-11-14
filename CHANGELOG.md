@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.4 — 2026-11-15
+
+适配 DSH 0.2.2-rc.3。
+
+- `agents.roots()` 在 rc.2+ 已移除（换成 `list()`）：插件加载直接 failed。现在优先 `list()`、回退 `roots()`，两个版本都能启动。
+- `sessionController.list` 的返回从 `{items}` 变成直接数组：`listSessions` 两种形状都兼容。
+- 真机验证（rc.3，端口 13564）：插件 active，Bot 例行唤醒 ok，`bot_send` 到普通会话送达、到其他 Bot 送达（对方那轮因模型商 402 余额不足而空回复，属模型账户问题不是插件问题）；四个插槽名在 rc.3 客户端 bundle 里都仍存在。
+
 ## 0.1.3 — 2026-11-12
 
 修复同名 Bot 跨工作区串数据的问题。

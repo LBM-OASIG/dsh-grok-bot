@@ -50,7 +50,32 @@ export class BotAgentRegistry {
       if (agent !== undefined) this.register(agent);
       return undefined;
     });
-    for (const agent of this.ctx.agents.roots()) this.register(agent);
+    for (const agent of this.liveAgents()) this.register(agent);
+  }
+
+  /**
+   * List live Agents across DSH versions.
+   *
+   * `ctx.agents.roots()` existed up to 0.2.2-rc.1 and was replaced by `list()`
+   * in rc.2+; calling a missing method here used to fail the whole plugin load.
+   * @returns {object[]} live agents.
+   */
+  liveAgents() {
+    const agents = this.ctx.agents;
+    if (agents === undefined || agents === null) return [];
+    try {
+      if (typeof agents.list === 'function') {
+        const listed = agents.list();
+        if (Array.isArray(listed)) return listed.filter((agent) => agent !== undefined && agent !== null);
+      }
+      if (typeof agents.roots === 'function') {
+        const roots = agents.roots();
+        if (roots !== undefined && roots !== null) return [...roots];
+      }
+    } catch (error) {
+      this.log('warn', `dsh-grok-bot: could not enumerate live Agents: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    return [];
   }
 
   /** Release everything one Bot registration installed on its Agent. */
